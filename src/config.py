@@ -3,6 +3,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 MODEL_PATH = PROJECT_ROOT / "models" / "hand_landmarker.task"
+SCREENSHOT_DIR = PROJECT_ROOT / "screenshots"
 
 CAM_INDEX = 0
 CAM_WIDTH = 1280
@@ -34,6 +35,7 @@ EXTENDED_FINGER_ANGLE_DEG = 45.0
 
 # Simulation timing
 MAX_DT = 0.05  # clamp so a stalled frame (e.g. alt-tab) doesn't teleport particles
+EFFECT_FADE_RATE = 3.0  # intensity units per second (~0.33s for a full fade)
 
 # Rain
 RAIN_COUNT = 500

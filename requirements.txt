@@ -9,4 +9,4 @@
 # matplotlib, certifi.
 
 mediapipe==1.0.1
-numpy>=1.26
+numpy==2.5.2

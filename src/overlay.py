@@ -59,7 +59,7 @@ def draw_hud(frame: np.ndarray, fps: float, hand_count: int, mirror: bool, mode:
     lines = (
         f"fps: {fps:5.1f}   hands: {hand_count}",
         f"mode: {mode.value:<10} fingers: {finger_count}",
-        f"[m] mirror:{'on' if mirror else 'off'}   [h] hud   [q] quit",
+        f"[m] mirror:{'on' if mirror else 'off'}   [h] hud   [s] screenshot   [q] quit",
     )
     y = 30
     for line in lines:
