@@ -1,0 +1,12 @@
+# Weather Wizard dependencies
+#
+# NOTE: opencv is intentionally NOT listed here. mediapipe depends on
+# `opencv-contrib-python`, which installs into the same `cv2` namespace as
+# `opencv-python`. Installing both makes them clobber each other's binaries,
+# so we rely on the transitive contrib build only.
+#
+# mediapipe also transitively brings: absl-py, flatbuffers, sounddevice,
+# matplotlib, certifi.
+
+mediapipe==1.0.1
+numpy>=1.26
