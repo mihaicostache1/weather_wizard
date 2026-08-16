@@ -55,10 +55,19 @@ def draw_skeleton(
         )
 
 
-def draw_hud(frame: np.ndarray, fps: float, hand_count: int, mirror: bool, mode: Mode, finger_count: int) -> None:
+def draw_hud(
+    frame: np.ndarray,
+    fps: float,
+    hand_count: int,
+    mirror: bool,
+    mode: Mode,
+    finger_count: int,
+    swipe_fraction: float = 0.0,
+) -> None:
     lines = (
         f"fps: {fps:5.1f}   hands: {hand_count}",
         f"mode: {mode.value:<10} fingers: {finger_count}",
+        f"swipe: {swipe_fraction:.2f} / {config.SWIPE_MIN_DISTANCE_FRACTION:.2f}",
         f"[m] mirror:{'on' if mirror else 'off'}   [h] hud   [q] quit",
     )
     y = 30

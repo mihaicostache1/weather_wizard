@@ -67,3 +67,18 @@ LIGHTNING_CORE_COLOR = (255, 255, 255)  # BGR white
 LIGHTNING_CORE_THICKNESS = 3
 LIGHTNING_FLASH_DECAY = 0.75
 LIGHTNING_FLASH_MAX_ALPHA = 0.35
+
+# Swipe detection (wind trigger)
+SWIPE_WINDOW_SEC = 0.5
+SWIPE_MIN_DISTANCE_FRACTION = 0.25  # net horizontal wrist movement, as a fraction of frame width, within the window
+SWIPE_COOLDOWN_SEC = 1.0
+
+# Wind (swipe-triggered gust)
+WIND_STREAK_COUNT = 150
+WIND_MIN_SPEED = 1800.0  # px/s
+WIND_MAX_SPEED = 3000.0  # px/s
+WIND_MIN_LENGTH = 40.0
+WIND_MAX_LENGTH = 90.0
+WIND_STREAK_LIFETIME = 0.6  # seconds
+WIND_COLOR = (200, 200, 200)  # BGR light grey-white
+WIND_THICKNESS = 2

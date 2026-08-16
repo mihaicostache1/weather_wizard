@@ -20,6 +20,8 @@ _COUNTED_FINGERS = {
     "pinky": (17, 18, 20),
 }
 
+WRIST_IDX = 0
+
 
 class Mode(Enum):
     CLEAR = "clear"
@@ -99,6 +101,60 @@ def resolve_finger_count(hands: list[Hand], active_hand: Hand | None) -> int:
 
 def mode_for_count(count: int) -> Mode:
     return _MODE_BY_COUNT.get(count, Mode.CLEAR)
+
+
+class SwipeDetector:
+    """Fires when a hand's wrist moves horizontally by more than
+    `SWIPE_MIN_DISTANCE_FRACTION` of the frame width within a short sliding
+    time window, returning the direction (+1 right, -1 left) or None.
+    Measured across a window rather than a single frame-to-frame delta,
+    since a single step is too noisy with landmark jitter to threshold
+    reliably. A frame where the hand isn't detected just skips adding a new
+    sample rather than wiping the whole window - fast swipes are exactly
+    when mediapipe is most likely to have a brief detection dropout from
+    motion blur, so clearing history on every miss made the fastest swipes
+    the least likely to register. After firing it enters a cooldown so one
+    continuous motion doesn't retrigger every frame."""
+
+    def __init__(self) -> None:
+        self._samples: deque[tuple[float, float]] = deque()
+        self._cooldown_remaining = 0.0
+        self.last_fraction = 0.0  # most recent measurement, surfaced on the HUD for tuning
+
+    def update(self, hand: Hand | None, now: float, dt: float, frame_width: float) -> int | None:
+        self._cooldown_remaining = max(0.0, self._cooldown_remaining - dt)
+
+        if hand is not None:
+            x = float(hand.landmarks_px[WRIST_IDX][0])
+            self._samples.append((now, x))
+
+        while self._samples and now - self._samples[0][0] > config.SWIPE_WINDOW_SEC:
+            self._samples.popleft()
+
+        # Deliberately keep evaluating on frames where the hand wasn't
+        # detected: a swipe often completes at the moment tracking drops
+        # out, and the samples already banked still describe it.
+        if len(self._samples) < 2:
+            self.last_fraction = 0.0
+            return None
+
+        # Peak-to-peak within the window, rather than newest-minus-oldest.
+        # A hand that sweeps across and drifts back would cancel itself out
+        # under the latter; the extremes still capture the real gesture,
+        # and their order gives the direction.
+        xs = [x for _, x in self._samples]
+        i_min = min(range(len(xs)), key=xs.__getitem__)
+        i_max = max(range(len(xs)), key=xs.__getitem__)
+        self.last_fraction = (xs[i_max] - xs[i_min]) / frame_width
+
+        if self._cooldown_remaining > 0.0:
+            return None
+
+        if self.last_fraction >= config.SWIPE_MIN_DISTANCE_FRACTION:
+            self._cooldown_remaining = config.SWIPE_COOLDOWN_SEC
+            self._samples.clear()
+            return 1 if i_max > i_min else -1
+        return None
 
 
 class GestureStabilizer:

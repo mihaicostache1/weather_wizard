@@ -8,7 +8,16 @@ from . import config
 from .effects.lightning import Lightning
 from .effects.rain import Rain
 from .effects.snow import Snow
-from .gestures import ActiveHandSelector, GestureStabilizer, Mode, extended_fingers, mode_for_count, resolve_finger_count
+from .effects.wind import Wind
+from .gestures import (
+    ActiveHandSelector,
+    GestureStabilizer,
+    Mode,
+    SwipeDetector,
+    extended_fingers,
+    mode_for_count,
+    resolve_finger_count,
+)
 from .hand_tracker import FINGERTIP_IDS, HandTracker
 from .overlay import draw_hud, draw_skeleton
 
@@ -29,9 +38,11 @@ def main() -> int:
     tracker = HandTracker()
     stabilizer = GestureStabilizer()
     active_hand_selector = ActiveHandSelector()
+    swipe_detectors = {"Left": SwipeDetector(), "Right": SwipeDetector()}
     rain: Rain | None = None
     snow: Snow | None = None
     lightning: Lightning | None = None
+    wind: Wind | None = None
 
     mirror = config.MIRROR_DEFAULT
     hud_visible = True
@@ -53,6 +64,7 @@ def main() -> int:
                 rain = Rain(w, h)
                 snow = Snow(w, h)
                 lightning = Lightning(w, h)
+                wind = Wind(w, h)
 
             now = time.perf_counter()
             dt = min(now - prev_tick, config.MAX_DT)
@@ -71,6 +83,18 @@ def main() -> int:
                 snow.update(dt)
                 snow.draw(frame)
 
+            by_side = {hand.handedness: hand for hand in hands}
+            frame_width = frame.shape[1]
+            swipe_direction = None
+            for side, detector in swipe_detectors.items():
+                direction = detector.update(by_side.get(side), now, dt, frame_width)
+                if direction is not None:
+                    swipe_direction = direction
+            if swipe_direction is not None:
+                wind.trigger(swipe_direction)
+            wind.update(dt)
+            wind.draw(frame)
+
             triggering_hand = primary if stable_mode is not Mode.CLEAR else None
             blink_on = int(now * config.BLINK_HZ * 2) % 2 == 0
             draw_skeleton(frame, hands, primary_hand=primary, triggering_hand=triggering_hand, blink_on=blink_on)
@@ -88,7 +112,8 @@ def main() -> int:
                 fps_ema = inst_fps if fps_ema == 0.0 else fps_ema * 0.9 + inst_fps * 0.1
 
             if hud_visible:
-                draw_hud(frame, fps_ema, len(hands), mirror, stable_mode, finger_count)
+                swipe_fraction = max(d.last_fraction for d in swipe_detectors.values())
+                draw_hud(frame, fps_ema, len(hands), mirror, stable_mode, finger_count, swipe_fraction)
 
             cv2.imshow(config.WINDOW_NAME, frame)
 
