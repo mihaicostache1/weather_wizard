@@ -11,7 +11,11 @@ Real-time hand-gesture-controlled weather, rendered live over your webcam feed. 
 | 2 | Snow |
 | 3 | Lightning, one bolt per raised fingertip |
 
-Only one hand may gesture at a time — if both hands show extended fingers simultaneously, the input is treated as ambiguous and no effect triggers. The right hand is dominant by default; control hands off to the other hand once the active hand closes into a fist while the other hand raises fingers.
+All gestures require the hand to be held **upright** — the palm axis must be within 60° of straight up (`HAND_UP_MAX_TILT_DEG`). A hand pointing down or held sideways is ignored, so resting your hands doesn't trigger anything.
+
+Only one hand may gesture at a time — if both upright hands show extended fingers simultaneously, the input is treated as ambiguous and no effect triggers. The right hand is dominant by default; control hands off to the other hand once the active hand closes into a fist while the other hand raises fingers.
+
+Swiping an upright hand horizontally by more than a quarter of the frame width triggers a wind gust in that direction, independently of whichever finger-count effect is active.
 
 ## Setup
 

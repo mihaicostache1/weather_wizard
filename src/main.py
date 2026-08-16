@@ -50,6 +50,7 @@ def main() -> int:
     rain: Rain | None = None
     snow: Snow | None = None
     lightning: Lightning | None = None
+    wind: Wind | None = None
     rain_layer: np.ndarray | None = None
     snow_layer: np.ndarray | None = None
     rain_fader = Fader(config.EFFECT_FADE_RATE)
@@ -75,6 +76,7 @@ def main() -> int:
                 rain = Rain(w, h)
                 snow = Snow(w, h)
                 lightning = Lightning(w, h)
+                wind = Wind(w, h)
                 rain_layer = np.zeros_like(frame)
                 snow_layer = np.zeros_like(frame)
 
@@ -123,7 +125,7 @@ def main() -> int:
                 for name in extended_fingers(primary):
                     x, y = primary.landmarks_px[FINGERTIP_IDS[name]]
                     lightning_targets[name] = (float(x), float(y))
-            lightning.update(lightning_targets)
+            lightning.update(lightning_targets, dt)
             lightning.draw(frame)
 
             if dt > 0:

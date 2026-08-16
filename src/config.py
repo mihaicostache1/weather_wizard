@@ -60,15 +60,38 @@ SNOW_COLOR = (255, 255, 255)  # BGR white
 
 # Lightning
 LIGHTNING_SUBDIVISIONS = 6
-LIGHTNING_DISPLACEMENT_FRACTION = 0.5  # relative to bolt length, decays per level
+LIGHTNING_DISPLACEMENT_FRACTION = 0.45  # relative to bolt length, decays per level
 LIGHTNING_DECAY = 0.55
-LIGHTNING_BOLT_LIFETIME_FRAMES = 8
-LIGHTNING_GLOW_COLOR = (255, 220, 140)  # BGR soft blue-white
-LIGHTNING_GLOW_THICKNESS = 14
+LIGHTNING_TOP_JITTER_FRACTION = 0.12  # how far the origin wanders sideways from straight above the tip
+
+# Forked side channels
+LIGHTNING_BRANCH_MIN = 2
+LIGHTNING_BRANCH_MAX = 5
+LIGHTNING_BRANCH_ANGLE_DEG = (25.0, 55.0)
+LIGHTNING_BRANCH_LENGTH_FRACTION = (0.18, 0.45)  # of the remaining distance to the tip
+LIGHTNING_BRANCH_SUBDIVISIONS = 4
+LIGHTNING_BRANCH_WIDTH_SCALE = 0.55
+
+# The channel tapers from cloud end to strike point
+LIGHTNING_WIDTH_TOP = 7.0
+LIGHTNING_WIDTH_TIP = 1.5
+LIGHTNING_TAPER_STEPS = 8
+
 LIGHTNING_CORE_COLOR = (255, 255, 255)  # BGR white
-LIGHTNING_CORE_THICKNESS = 3
+LIGHTNING_GLOW_TINT = (1.6, 1.0, 1.25)  # BGR multipliers - pushes the halo blue-violet
+LIGHTNING_BLOOM_DOWNSCALE = 4  # blur at 1/N resolution: faster and smoother than full-res
+LIGHTNING_BLOOM_SIGMA = 6.0
+LIGHTNING_BLOOM_GAIN = 1.5
+
+LIGHTNING_IMPACT_RADIUS = 26.0
+
+LIGHTNING_BOLT_LIFETIME = 0.22  # seconds
+LIGHTNING_INTENSITY_FALLOFF = 1.6  # exponent on the fade curve
+LIGHTNING_FLICKER_RANGE = (0.45, 1.0)
+LIGHTNING_RESTRIKE_DELAY = (0.05, 0.22)  # randomized gap so a held gesture doesn't machine-gun
+
 LIGHTNING_FLASH_DECAY = 0.75
-LIGHTNING_FLASH_MAX_ALPHA = 0.35
+LIGHTNING_FLASH_MAX_ALPHA = 0.28
 
 # Swipe detection (wind trigger)
 SWIPE_WINDOW_SEC = 0.5
