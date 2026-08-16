@@ -25,7 +25,6 @@ def draw_skeleton(
 
         for a, b in HAND_CONNECTIONS:
             cv2.line(frame, tuple(pts[a]), tuple(pts[b]), config.SKELETON_LINE_COLOR, 2, cv2.LINE_AA)
-
         for idx, (x, y) in enumerate(pts):
             if idx in _FINGERTIP_INDICES:
                 is_extended = _TIP_ID_TO_NAME[idx] in extended
@@ -55,10 +54,19 @@ def draw_skeleton(
         )
 
 
-def draw_hud(frame: np.ndarray, fps: float, hand_count: int, mirror: bool, mode: Mode, finger_count: int) -> None:
+def draw_hud(
+    frame: np.ndarray,
+    fps: float,
+    hand_count: int,
+    mirror: bool,
+    mode: Mode,
+    finger_count: int,
+    swipe_fraction: float = 0.0,
+) -> None:
     lines = (
         f"fps: {fps:5.1f}   hands: {hand_count}",
         f"mode: {mode.value:<10} fingers: {finger_count}",
+        f"swipe: {swipe_fraction:.2f} / {config.SWIPE_MIN_DISTANCE_FRACTION:.2f}",
         f"[m] mirror:{'on' if mirror else 'off'}   [h] hud   [s] screenshot   [q] quit",
     )
     y = 30
