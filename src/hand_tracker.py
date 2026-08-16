@@ -45,7 +45,7 @@ class HandTracker:
         )
         self._landmarker = vision.HandLandmarker.create_from_options(options)
 
-    def detect(self, frame_bgr: np.ndarray, timestamp_ms: int) -> list[Hand]:
+    def detect(self, frame_bgr: np.ndarray, timestamp_ms: int, mirrored: bool = True) -> list[Hand]:
         h, w = frame_bgr.shape[:2]
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
@@ -56,11 +56,17 @@ class HandTracker:
             norm = np.array([[lm.x, lm.y, lm.z] for lm in landmarks], dtype=np.float32)
             px = norm[:, :2] * np.array([w, h], dtype=np.float32)
             category = handedness[0]
+            label = category.category_name
+            if mirrored:
+                # The classifier reads raw pixel chirality. Flipping the
+                # frame for the mirror view flips a real hand's chirality
+                # too, so the raw label comes out swapped from reality.
+                label = "Left" if label == "Right" else "Right"
             hands.append(
                 Hand(
                     landmarks_px=px,
                     landmarks_norm=norm,
-                    handedness=category.category_name,
+                    handedness=label,
                     score=category.score,
                 )
             )

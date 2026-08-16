@@ -5,7 +5,11 @@ import time
 import cv2
 
 from . import config
-from .hand_tracker import HandTracker
+from .effects.lightning import Lightning
+from .effects.rain import Rain
+from .effects.snow import Snow
+from .gestures import ActiveHandSelector, GestureStabilizer, Mode, extended_fingers, mode_for_count, resolve_finger_count
+from .hand_tracker import FINGERTIP_IDS, HandTracker
 from .overlay import draw_hud, draw_skeleton
 
 
@@ -23,6 +27,11 @@ def open_camera() -> cv2.VideoCapture:
 def main() -> int:
     cap = open_camera()
     tracker = HandTracker()
+    stabilizer = GestureStabilizer()
+    active_hand_selector = ActiveHandSelector()
+    rain: Rain | None = None
+    snow: Snow | None = None
+    lightning: Lightning | None = None
 
     mirror = config.MIRROR_DEFAULT
     hud_visible = True
@@ -39,19 +48,47 @@ def main() -> int:
             if mirror:
                 frame = cv2.flip(frame, 1)
 
+            if rain is None:
+                h, w = frame.shape[:2]
+                rain = Rain(w, h)
+                snow = Snow(w, h)
+                lightning = Lightning(w, h)
+
             now = time.perf_counter()
-            hands = tracker.detect(frame, int((now - start) * 1000))
-
-            draw_skeleton(frame, hands)
-
-            dt = now - prev_tick
+            dt = min(now - prev_tick, config.MAX_DT)
             prev_tick = now
+
+            hands = tracker.detect(frame, int((now - start) * 1000), mirrored=mirror)
+
+            primary = active_hand_selector.update(hands)
+            finger_count = resolve_finger_count(hands, primary)
+            stable_mode = stabilizer.update(mode_for_count(finger_count))
+
+            if stable_mode is Mode.RAIN:
+                rain.update(dt)
+                rain.draw(frame)
+            elif stable_mode is Mode.SNOW:
+                snow.update(dt)
+                snow.draw(frame)
+
+            triggering_hand = primary if stable_mode is not Mode.CLEAR else None
+            blink_on = int(now * config.BLINK_HZ * 2) % 2 == 0
+            draw_skeleton(frame, hands, primary_hand=primary, triggering_hand=triggering_hand, blink_on=blink_on)
+
+            lightning_targets: dict[str, tuple[float, float]] = {}
+            if stable_mode is Mode.LIGHTNING and primary is not None:
+                for name in extended_fingers(primary):
+                    x, y = primary.landmarks_px[FINGERTIP_IDS[name]]
+                    lightning_targets[name] = (float(x), float(y))
+            lightning.update(lightning_targets)
+            lightning.draw(frame)
+
             if dt > 0:
                 inst_fps = 1.0 / dt
                 fps_ema = inst_fps if fps_ema == 0.0 else fps_ema * 0.9 + inst_fps * 0.1
 
             if hud_visible:
-                draw_hud(frame, fps_ema, len(hands), mirror)
+                draw_hud(frame, fps_ema, len(hands), mirror, stable_mode, finger_count)
 
             cv2.imshow(config.WINDOW_NAME, frame)
 
