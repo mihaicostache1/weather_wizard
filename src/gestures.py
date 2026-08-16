@@ -88,6 +88,12 @@ def extended_fingers(hand: Hand) -> list[str]:
     return extended
 
 
+def palm_center(hand: Hand) -> np.ndarray:
+    """Centroid of the wrist and the four finger MCP knuckles - a steadier
+    anchor than the wrist alone, which swings noticeably as you rotate."""
+    return hand.landmarks_px[[WRIST_IDX, 5, 9, 13, 17]].mean(axis=0)
+
+
 def is_pointing_up(hand: Hand) -> bool:
     """Whether the palm axis - wrist to middle-finger MCP knuckle - points
     upward. Image coords put y growing downward, so an upright hand has a
@@ -140,6 +146,12 @@ class SwipeDetector:
         self._cooldown_remaining = 0.0
         self.last_fraction = 0.0  # most recent measurement, surfaced on the HUD for tuning
 
+    def reset(self) -> None:
+        """Discard banked motion - used when another detector claims the
+        gesture, so the same movement can't also register as a swipe."""
+        self._samples.clear()
+        self.last_fraction = 0.0
+
     def update(self, hand: Hand | None, now: float, dt: float, frame_width: float) -> int | None:
         self._cooldown_remaining = max(0.0, self._cooldown_remaining - dt)
 
@@ -172,15 +184,99 @@ class SwipeDetector:
         xs = [x for _, x in self._samples]
         i_min = min(range(len(xs)), key=xs.__getitem__)
         i_max = max(range(len(xs)), key=xs.__getitem__)
-        self.last_fraction = (xs[i_max] - xs[i_min]) / frame_width
+        peak_to_peak = xs[i_max] - xs[i_min]
+        self.last_fraction = peak_to_peak / frame_width
 
         if self._cooldown_remaining > 0.0:
+            return None
+
+        # A swipe travels one way; a circle comes back to where it started.
+        # Requiring most of the peak-to-peak span to survive as net travel
+        # is what keeps a circular gesture from also firing a swipe.
+        net = xs[-1] - xs[0]
+        if peak_to_peak > 1e-6 and abs(net) < config.SWIPE_MIN_NET_RATIO * peak_to_peak:
             return None
 
         if self.last_fraction >= config.SWIPE_MIN_DISTANCE_FRACTION:
             self._cooldown_remaining = config.SWIPE_COOLDOWN_SEC
             self._samples.clear()
             return 1 if i_max > i_min else -1
+        return None
+
+
+class CircleDetector:
+    """Fires when a hand's wrist traces a full revolution within the window,
+    returning spin direction (+1 clockwise on screen, -1 counter-clockwise)
+    or None.
+
+    Rotation is measured as the sum of signed angle steps about the running
+    centroid of the sampled points, each step wrapped to [-pi, pi]. Wrapping
+    is what lets the total accumulate across the +/-pi branch cut - without
+    it, a hand crossing that boundary registers a spurious full turn. Using
+    the window's own centroid rather than a fixed pivot means the rotation
+    is measured relative to your own drift, so a circle drawn while your arm
+    wanders still reads as a circle.
+
+    Angle summing alone is far too permissive - jitter accumulates a full
+    turn given enough frames - so three guards narrow it down; see the
+    CIRCLE_* entries in config for what each one rejects."""
+
+    def __init__(self) -> None:
+        self._samples: deque[tuple[float, float, float]] = deque()
+        self._cooldown_remaining = 0.0
+        self.last_turns = 0.0  # most recent measurement, surfaced on the HUD for tuning
+
+    def update(self, hand: Hand | None, now: float, dt: float, frame_width: float) -> int | None:
+        self._cooldown_remaining = max(0.0, self._cooldown_remaining - dt)
+
+        if hand is not None and not is_pointing_up(hand):
+            self._samples.clear()
+            self.last_turns = 0.0
+            return None
+
+        if hand is not None:
+            x, y = hand.landmarks_px[WRIST_IDX]
+            self._samples.append((now, float(x), float(y)))
+
+        while self._samples and now - self._samples[0][0] > config.CIRCLE_WINDOW_SEC:
+            self._samples.popleft()
+
+        if len(self._samples) < config.CIRCLE_MIN_SAMPLES:
+            self.last_turns = 0.0
+            return None
+
+        points = np.array([[x, y] for _, x, y in self._samples], dtype=np.float32)
+        relative = points - points.mean(axis=0)
+        radii = np.linalg.norm(relative, axis=1)
+        mean_radius = max(float(radii.mean()), 1e-6)
+
+        angles = np.arctan2(relative[:, 1], relative[:, 0])
+        steps = np.diff(angles)
+        steps = (steps + np.pi) % (2 * np.pi) - np.pi
+        swept = float(steps.sum())
+
+        # Measured before the guards run, so the reported value climbs
+        # continuously instead of blanking the moment one noisy frame trips
+        # a guard. The guards below gate firing, not measurement.
+        self.last_turns = abs(swept) / (2 * np.pi)
+
+        if self._cooldown_remaining > 0.0:
+            return None
+
+        if mean_radius < config.CIRCLE_MIN_RADIUS_FRACTION * frame_width:
+            return None
+
+        if float(radii.std()) / mean_radius > config.CIRCLE_MAX_RADIUS_VARIATION:
+            return None
+
+        forward = float((steps > 0).sum())
+        if max(forward, steps.size - forward) / steps.size < config.CIRCLE_MIN_DIRECTION_CONSISTENCY:
+            return None
+
+        if self.last_turns >= config.CIRCLE_MIN_TURNS:
+            self._cooldown_remaining = config.CIRCLE_COOLDOWN_SEC
+            self._samples.clear()
+            return 1 if swept > 0 else -1
         return None
 
 

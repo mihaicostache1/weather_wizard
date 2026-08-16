@@ -96,8 +96,37 @@ LIGHTNING_FLASH_MAX_ALPHA = 0.28
 # Swipe detection (wind trigger)
 SWIPE_WINDOW_SEC = 0.5
 HAND_UP_MAX_TILT_DEG = 60.0  # how far the palm axis may lean from straight up and still count as upright
-SWIPE_MIN_DISTANCE_FRACTION = 0.25  # net horizontal wrist movement, as a fraction of frame width, within the window
+SWIPE_MIN_DISTANCE_FRACTION = 0.28  # net horizontal wrist movement, as a fraction of frame width, within the window
 SWIPE_COOLDOWN_SEC = 1.0
+SWIPE_MIN_NET_RATIO = 0.6  # net travel vs peak-to-peak; separates a one-way swipe from a circle that comes back
+
+# Circle detection (tornado trigger)
+CIRCLE_WINDOW_SEC = 1.6
+CIRCLE_MIN_SAMPLES = 8
+CIRCLE_MIN_TURNS = 1.6  # full revolutions swept within the window
+CIRCLE_MIN_RADIUS_FRACTION = 0.04  # of frame width; below this it's landmark jitter, not a circle
+CIRCLE_MAX_RADIUS_VARIATION = 0.9  # std/mean of the radii; loose enough for ovals and drifting loops
+CIRCLE_MIN_DIRECTION_CONSISTENCY = 0.7  # share of angular steps that must agree in sign; the main defense
+# against straight back-and-forth waving, whose radius spread (~0.58) now clears the shape guard above
+CIRCLE_COOLDOWN_SEC = 1.0
+
+# Tornado (circle-triggered vortex, emanating along the axis out of the palm)
+TORNADO_LIFETIME = 4.0  # seconds a vortex lasts before fading; re-triggering refreshes it
+TORNADO_FADE_RATE = 1.6  # intensity units per second
+TORNADO_INNER_RADIUS_FRACTION = 0.02  # radius at the palm, as a fraction of frame width
+TORNADO_OUTER_RADIUS_FRACTION = 0.20  # radius at full extension toward the viewer
+TORNADO_FLARE_EXPONENT = 1.5  # >1 curves the flare instead of leaving a straight cone
+TORNADO_TILT_SQUASH = 0.75  # vertical squash, so the spiral reads as a tilted disc rather than flat-on
+TORNADO_ARMS = 4  # spiral arms drawn as continuous curves
+TORNADO_ARM_SEGMENTS = 56  # samples along each arm; more is smoother
+TORNADO_SPIN_RATE = 4.0  # rad/s the whole spiral rotates
+TORNADO_SPIRAL_TWIST = 4.5  # radians of shear across the full extension - sets how tightly the arms curl
+TORNADO_ARM_WIDTH_INNER = 1.0  # stroke width at the palm
+TORNADO_ARM_WIDTH_OUTER = 4.0  # and at full extension
+TORNADO_ARM_SLICES = 12  # polylines can't vary width along a stroke, so each arm is drawn in this many pieces
+TORNADO_FADE_IN_Z = 0.12  # arms ramp up over this much of their length
+TORNADO_FADE_OUT_Z = 0.75  # and dissolve past here, so they don't end abruptly
+TORNADO_COLOR = (200, 195, 185)  # BGR pale dust
 
 # Wind (swipe-triggered gust)
 WIND_STREAK_COUNT = 150

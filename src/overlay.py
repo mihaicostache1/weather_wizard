@@ -62,11 +62,13 @@ def draw_hud(
     mode: Mode,
     finger_count: int,
     swipe_fraction: float = 0.0,
+    circle_turns: float = 0.0,
 ) -> None:
     lines = (
         f"fps: {fps:5.1f}   hands: {hand_count}",
         f"mode: {mode.value:<10} fingers: {finger_count}",
-        f"swipe: {swipe_fraction:.2f} / {config.SWIPE_MIN_DISTANCE_FRACTION:.2f}",
+        f"swipe: {swipe_fraction:.2f} / {config.SWIPE_MIN_DISTANCE_FRACTION:.2f}"
+        f"   circle: {circle_turns:.2f} / {config.CIRCLE_MIN_TURNS:.2f}",
         f"[m] mirror:{'on' if mirror else 'off'}   [h] hud   [s] screenshot   [q] quit",
     )
     y = 30

@@ -10,14 +10,17 @@ from .effects.base import Fader
 from .effects.lightning import Lightning
 from .effects.rain import Rain
 from .effects.snow import Snow
+from .effects.tornado import Tornado
 from .effects.wind import Wind
 from .gestures import (
     ActiveHandSelector,
+    CircleDetector,
     GestureStabilizer,
     Mode,
     SwipeDetector,
     extended_fingers,
     mode_for_count,
+    palm_center,
     resolve_finger_count,
 )
 from .hand_tracker import FINGERTIP_IDS, HandTracker
@@ -47,10 +50,12 @@ def main() -> int:
     stabilizer = GestureStabilizer()
     active_hand_selector = ActiveHandSelector()
     swipe_detectors = {"Left": SwipeDetector(), "Right": SwipeDetector()}
+    circle_detectors = {"Left": CircleDetector(), "Right": CircleDetector()}
     rain: Rain | None = None
     snow: Snow | None = None
     lightning: Lightning | None = None
     wind: Wind | None = None
+    tornado: Tornado | None = None
     rain_layer: np.ndarray | None = None
     snow_layer: np.ndarray | None = None
     rain_fader = Fader(config.EFFECT_FADE_RATE)
@@ -77,6 +82,7 @@ def main() -> int:
                 snow = Snow(w, h)
                 lightning = Lightning(w, h)
                 wind = Wind(w, h)
+                tornado = Tornado(w, h)
                 rain_layer = np.zeros_like(frame)
                 snow_layer = np.zeros_like(frame)
 
@@ -106,6 +112,17 @@ def main() -> int:
 
             by_side = {hand.handedness: hand for hand in hands}
             frame_width = frame.shape[1]
+            # Circles are evaluated first. A circular path sweeps enough
+            # horizontal distance to look like a swipe too, so a detected
+            # circle claims the motion and clears that hand's swipe buffer.
+            for side, detector in circle_detectors.items():
+                spin = detector.update(by_side.get(side), now, dt, frame_width)
+                if spin is not None:
+                    swipe_detectors[side].reset()
+                    circling_hand = by_side.get(side)
+                    if circling_hand is not None:
+                        tornado.trigger(spin, side, palm_center(circling_hand))
+
             swipe_direction = None
             for side, detector in swipe_detectors.items():
                 direction = detector.update(by_side.get(side), now, dt, frame_width)
@@ -115,6 +132,10 @@ def main() -> int:
                 wind.trigger(swipe_direction)
             wind.update(dt)
             wind.draw(frame)
+
+            anchor_hand = by_side.get(tornado.anchor_side) if tornado.anchor_side else None
+            tornado.update(dt, palm_center(anchor_hand) if anchor_hand is not None else None)
+            tornado.draw(frame)
 
             triggering_hand = primary if stable_mode is not Mode.CLEAR else None
             blink_on = int(now * config.BLINK_HZ * 2) % 2 == 0
@@ -134,7 +155,10 @@ def main() -> int:
 
             if hud_visible:
                 swipe_fraction = max(d.last_fraction for d in swipe_detectors.values())
-                draw_hud(frame, fps_ema, len(hands), mirror, stable_mode, finger_count, swipe_fraction)
+                circle_turns = max(d.last_turns for d in circle_detectors.values())
+                draw_hud(
+                    frame, fps_ema, len(hands), mirror, stable_mode, finger_count, swipe_fraction, circle_turns
+                )
 
             cv2.imshow(config.WINDOW_NAME, frame)
 
