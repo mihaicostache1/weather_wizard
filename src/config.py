@@ -1,0 +1,26 @@
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+MODEL_PATH = PROJECT_ROOT / "models" / "hand_landmarker.task"
+
+CAM_INDEX = 0
+CAM_WIDTH = 1280
+CAM_HEIGHT = 720
+
+NUM_HANDS = 2
+MIN_HAND_DETECTION_CONFIDENCE = 0.5
+MIN_HAND_PRESENCE_CONFIDENCE = 0.5
+MIN_TRACKING_CONFIDENCE = 0.5
+
+MIRROR_DEFAULT = True
+WINDOW_NAME = "Weather Wizard"
+
+# Colors are BGR (opencv convention), not RGB.
+SKELETON_LINE_COLOR = (255, 200, 0)
+JOINT_COLOR = (0, 165, 255)
+JOINT_RADIUS = 4
+FINGERTIP_COLOR = (0, 255, 0)
+FINGERTIP_RADIUS = 7
+HAND_LABEL_COLOR = (255, 255, 255)
+HUD_TEXT_COLOR = (0, 255, 255)
