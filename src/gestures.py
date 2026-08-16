@@ -21,6 +21,7 @@ _COUNTED_FINGERS = {
 }
 
 WRIST_IDX = 0
+MIDDLE_MCP_IDX = 9
 
 
 class Mode(Enum):
@@ -87,6 +88,20 @@ def extended_fingers(hand: Hand) -> list[str]:
     return extended
 
 
+def is_pointing_up(hand: Hand) -> bool:
+    """Whether the palm axis - wrist to middle-finger MCP knuckle - points
+    upward. Image coords put y growing downward, so an upright hand has a
+    negative dy. Checking the angle rather than just the sign keeps a hand
+    held sideways or diagonally from counting as upright."""
+    axis = hand.landmarks_px[MIDDLE_MCP_IDX] - hand.landmarks_px[WRIST_IDX]
+    length = float(np.linalg.norm(axis))
+    if length < 1e-6:
+        return False
+    cos_from_up = float(-axis[1]) / length  # dot with straight-up (0, -1)
+    angle = float(np.degrees(np.arccos(np.clip(cos_from_up, -1.0, 1.0))))
+    return angle <= config.HAND_UP_MAX_TILT_DEG
+
+
 def resolve_finger_count(hands: list[Hand], active_hand: Hand | None) -> int:
     """The active hand's finger count only counts when it's the only hand
     gesturing. If any other visible hand also has fingers extended at the
@@ -123,6 +138,14 @@ class SwipeDetector:
 
     def update(self, hand: Hand | None, now: float, dt: float, frame_width: float) -> int | None:
         self._cooldown_remaining = max(0.0, self._cooldown_remaining - dt)
+
+        # A hand that isn't upright cancels outright rather than being
+        # treated like a dropout - otherwise samples banked before you
+        # turned it down would linger in the window and could still fire.
+        if hand is not None and not is_pointing_up(hand):
+            self._samples.clear()
+            self.last_fraction = 0.0
+            return None
 
         if hand is not None:
             x = float(hand.landmarks_px[WRIST_IDX][0])

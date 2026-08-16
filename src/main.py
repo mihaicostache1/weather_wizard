@@ -3,8 +3,10 @@ from __future__ import annotations
 import time
 
 import cv2
+import numpy as np
 
 from . import config
+from .effects.base import Fader
 from .effects.lightning import Lightning
 from .effects.rain import Rain
 from .effects.snow import Snow
@@ -20,6 +22,12 @@ from .gestures import (
 )
 from .hand_tracker import FINGERTIP_IDS, HandTracker
 from .overlay import draw_hud, draw_skeleton
+
+
+def save_screenshot(frame) -> None:
+    config.SCREENSHOT_DIR.mkdir(exist_ok=True)
+    path = config.SCREENSHOT_DIR / f"weather_wizard_{time.strftime('%Y%m%d_%H%M%S')}.png"
+    cv2.imwrite(str(path), frame)
 
 
 def open_camera() -> cv2.VideoCapture:
@@ -43,6 +51,10 @@ def main() -> int:
     snow: Snow | None = None
     lightning: Lightning | None = None
     wind: Wind | None = None
+    rain_layer: np.ndarray | None = None
+    snow_layer: np.ndarray | None = None
+    rain_fader = Fader(config.EFFECT_FADE_RATE)
+    snow_fader = Fader(config.EFFECT_FADE_RATE)
 
     mirror = config.MIRROR_DEFAULT
     hud_visible = True
@@ -65,6 +77,8 @@ def main() -> int:
                 snow = Snow(w, h)
                 lightning = Lightning(w, h)
                 wind = Wind(w, h)
+                rain_layer = np.zeros_like(frame)
+                snow_layer = np.zeros_like(frame)
 
             now = time.perf_counter()
             dt = min(now - prev_tick, config.MAX_DT)
@@ -76,12 +90,19 @@ def main() -> int:
             finger_count = resolve_finger_count(hands, primary)
             stable_mode = stabilizer.update(mode_for_count(finger_count))
 
-            if stable_mode is Mode.RAIN:
+            rain_alpha = rain_fader.update(1.0 if stable_mode is Mode.RAIN else 0.0, dt)
+            if rain_alpha > 0.01:
                 rain.update(dt)
-                rain.draw(frame)
-            elif stable_mode is Mode.SNOW:
+                rain_layer.fill(0)
+                rain.draw(rain_layer)
+                cv2.addWeighted(frame, 1.0, rain_layer, rain_alpha, 0.0, dst=frame)
+
+            snow_alpha = snow_fader.update(1.0 if stable_mode is Mode.SNOW else 0.0, dt)
+            if snow_alpha > 0.01:
                 snow.update(dt)
-                snow.draw(frame)
+                snow_layer.fill(0)
+                snow.draw(snow_layer)
+                cv2.addWeighted(frame, 1.0, snow_layer, snow_alpha, 0.0, dst=frame)
 
             by_side = {hand.handedness: hand for hand in hands}
             frame_width = frame.shape[1]
@@ -124,6 +145,8 @@ def main() -> int:
                 mirror = not mirror
             elif key == ord("h"):
                 hud_visible = not hud_visible
+            elif key == ord("s"):
+                save_screenshot(frame)
     finally:
         cap.release()
         tracker.close()

@@ -30,3 +30,18 @@ class ParticleSystem:
 
     def draw(self, frame: np.ndarray) -> None:
         raise NotImplementedError
+
+
+class Fader:
+    """Ramps a 0..1 intensity toward a target value at a fixed rate per
+    second, so switching gestures fades an effect in/out instead of
+    snapping it on or off."""
+
+    def __init__(self, rate_per_sec: float) -> None:
+        self.rate = rate_per_sec
+        self.value = 0.0
+
+    def update(self, target: float, dt: float) -> float:
+        step = self.rate * dt
+        self.value = min(target, self.value + step) if self.value < target else max(target, self.value - step)
+        return self.value

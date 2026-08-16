@@ -3,6 +3,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 MODEL_PATH = PROJECT_ROOT / "models" / "hand_landmarker.task"
+SCREENSHOT_DIR = PROJECT_ROOT / "screenshots"
 
 CAM_INDEX = 0
 CAM_WIDTH = 1280
@@ -34,6 +35,7 @@ EXTENDED_FINGER_ANGLE_DEG = 45.0
 
 # Simulation timing
 MAX_DT = 0.05  # clamp so a stalled frame (e.g. alt-tab) doesn't teleport particles
+EFFECT_FADE_RATE = 3.0  # intensity units per second (~0.33s for a full fade)
 
 # Rain
 RAIN_COUNT = 500
@@ -70,6 +72,7 @@ LIGHTNING_FLASH_MAX_ALPHA = 0.35
 
 # Swipe detection (wind trigger)
 SWIPE_WINDOW_SEC = 0.5
+HAND_UP_MAX_TILT_DEG = 60.0  # how far the palm axis may lean from straight up and still count as upright
 SWIPE_MIN_DISTANCE_FRACTION = 0.25  # net horizontal wrist movement, as a fraction of frame width, within the window
 SWIPE_COOLDOWN_SEC = 1.0
 
