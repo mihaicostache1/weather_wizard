@@ -103,12 +103,16 @@ def is_pointing_up(hand: Hand) -> bool:
 
 
 def resolve_finger_count(hands: list[Hand], active_hand: Hand | None) -> int:
-    """The active hand's finger count only counts when it's the only hand
-    gesturing. If any other visible hand also has fingers extended at the
-    same time, the input is ambiguous and treated as no gesture at all."""
-    if active_hand is None:
+    """The active hand's finger count only counts when the hand is held
+    upright and is the only hand gesturing. A second upright hand with
+    fingers extended makes the input ambiguous and yields no gesture -
+    hands that aren't upright are ignored entirely, so one resting at your
+    side with straight fingers can't block the gesturing one."""
+    if active_hand is None or not is_pointing_up(active_hand):
         return 0
-    other_hand_gesturing = any(extended_fingers(h) for h in hands if h is not active_hand)
+    other_hand_gesturing = any(
+        extended_fingers(h) for h in hands if h is not active_hand and is_pointing_up(h)
+    )
     if other_hand_gesturing:
         return 0
     return len(extended_fingers(active_hand))

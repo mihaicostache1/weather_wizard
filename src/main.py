@@ -125,7 +125,7 @@ def main() -> int:
                 for name in extended_fingers(primary):
                     x, y = primary.landmarks_px[FINGERTIP_IDS[name]]
                     lightning_targets[name] = (float(x), float(y))
-            lightning.update(lightning_targets)
+            lightning.update(lightning_targets, dt)
             lightning.draw(frame)
 
             if dt > 0:
